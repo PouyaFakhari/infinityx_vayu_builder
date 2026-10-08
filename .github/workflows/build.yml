@@ -15,7 +15,7 @@ on:
 jobs:
   build:
     name: Build Infinity-X 4.0 (Android 17) for POCO X3 Pro
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Maximize Build Space
         uses: easimon/maximize-build-space@master
@@ -35,7 +35,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev \
-            libc6-dev-i386 libncurses5 lib32ncurses5-dev x11proto-core-dev libx11-dev \
+            libc6-dev-i386 libncurses5 libncurses5-dev x11proto-core-dev libx11-dev \
             lib32z1-dev libgl1-mesa-dev libxml2 libxml2-utils xsltproc unzip fontconfig \
             python3 python-is-python3 aria2 rsync bc ccache
 
