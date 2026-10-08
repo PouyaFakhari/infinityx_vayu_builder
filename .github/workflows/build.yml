@@ -1,0 +1,113 @@
+name: Build Project Infinity-X 4.0 for Vayu
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build Type (VANILLA or GAPPS)'
+        required: true
+        default: 'VANILLA'
+        type: choice
+        options:
+          - VANILLA
+          - GAPPS
+
+jobs:
+  build:
+    name: Build Infinity-X 4.0 (Android 17) for POCO X3 Pro
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Maximize Build Space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 10240
+          swap-size-mb: 16384
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+
+      - name: Checkout Builder Repo
+        uses: actions/checkout@v4
+
+      - name: Set up Environment & Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev \
+            libc6-dev-i386 libncurses5 lib32ncurses5-dev x11proto-core-dev libx11-dev \
+            lib32z1-dev libgl1-mesa-dev libxml2 libxml2-utils xsltproc unzip fontconfig \
+            python3 python-is-python3 aria2 rsync bc ccache
+
+          # Install Google Repo tool
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          sudo ln -sf ~/bin/repo /usr/local/bin/repo
+
+          git config --global user.name "PouyaFakhari"
+          git config --global user.email "pouya@builder.local"
+
+      - name: Initialize & Sync Project Infinity-X 17
+        run: |
+          mkdir -p ~/infinity
+          cd ~/infinity
+          repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 17 --depth=1 --git-lfs
+
+          # Add Vayu local manifest for lineage-24.0
+          mkdir -p .repo/local_manifests
+          cat << 'EOF' > .repo/local_manifests/vayu.xml
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <project path="device/xiaomi/vayu" name="xetob/android_device_xiaomi_vayu" remote="github" revision="lineage-24.0" />
+            <project path="device/xiaomi/sm8150-common" name="xetob/android_device_xiaomi_sm8150-common" remote="github" revision="lineage-24.0" />
+            <project path="vendor/xiaomi/vayu" name="xetob/proprietary_vendor_xiaomi_vayu" remote="github" revision="lineage-24.0" />
+            <project path="vendor/xiaomi/sm8150-common" name="xetob/proprietary_vendor_xiaomi_sm8150-common" remote="github" revision="lineage-24.0" />
+            <project path="kernel/xiaomi/sm8150" name="xetob/android_kernel_xiaomi_sm8150" remote="github" revision="lineage-24.0" />
+            <project path="hardware/xiaomi" name="LineageOS/android_hardware_xiaomi" remote="github" revision="lineage-24.0" />
+          </manifest>
+          EOF
+
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+
+      - name: Setup Device Configuration & Flags
+        run: |
+          cd ~/infinity
+          # Setup infinity device makefile if needed
+          if [ ! -f device/xiaomi/vayu/infinity_vayu.mk ]; then
+            cat << 'EOF' > device/xiaomi/vayu/infinity_vayu.mk
+          $(call inherit-product, device/xiaomi/vayu/lineage_vayu.mk)
+          $(call inherit-product, vendor/infinity/config/common_full_phone.mk)
+          PRODUCT_NAME := infinity_vayu
+          EOF
+          fi
+
+      - name: Build ROM
+        run: |
+          cd ~/infinity
+          source build/envsetup.sh
+          lunch infinity_vayu-userdebug || lunch lineage_vayu-userdebug
+
+          export CCACHE_DIR=~/.ccache
+          export USE_CCACHE=1
+          ccache -M 20G
+
+          if [ "${{ github.event.inputs.build_type }}" == "GAPPS" ]; then
+            export WITH_GAPPS=true
+          else
+            export WITH_GAPPS=false
+          fi
+
+          m bacon -j$(nproc --all)
+
+      - name: Upload Output to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: "v4.0-android17-vayu"
+          name: "Project Infinity-X 4.0 Android 17 (vayu)"
+          draft: false
+          prerelease: false
+          files: ~/infinity/out/target/product/vayu/Project_Infinity-X-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
