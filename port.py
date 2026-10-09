@@ -140,16 +140,21 @@ def main():
     if os.path.exists(updater_script):
         patch_updater_script(updater_script)
 
-    # 5. Repack into final zip
+    # 5. Repack into final zip with optimized compression
     log(f"Repacking final signed flashable zip: {out_zip}")
-    with zipfile.ZipFile(out_zip, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as z_out:
+    with zipfile.ZipFile(out_zip, 'w') as z_out:
         for root, dirs, files in os.walk(out_dir):
             for file in files:
                 full_path = os.path.join(root, file)
                 rel_path = os.path.relpath(full_path, out_dir)
-                z_out.write(full_path, rel_path)
+                # If file is already brotli compressed (.br), store as-is without deflation overhead
+                if file.endswith('.br'):
+                    z_out.write(full_path, rel_path, compress_type=zipfile.ZIP_STORED)
+                else:
+                    z_out.write(full_path, rel_path, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
 
-    log(f"ROM package successfully generated: {out_zip} ({os.path.getsize(out_zip):,} bytes)")
+    final_size = os.path.getsize(out_zip)
+    log(f"ROM package successfully generated: {out_zip} ({final_size:,} bytes / {final_size/(1024*1024):.2f} MB)")
 
 if __name__ == "__main__":
     main()

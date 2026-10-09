@@ -17,7 +17,7 @@ jobs:
       - name: Install Tools
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y aria2 python3 zip unzip curl
+          sudo apt-get install -y aria2 python3 zip unzip curl gh
 
       - name: Download Vayu Android 17 Hardware Base (1.58 GB)
         run: |
@@ -43,32 +43,34 @@ jobs:
           cat sha256.txt
 
       - name: Publish to GitHub Releases
-        uses: softprops/action-gh-release@v2
-        if: success()
-        with:
-          tag_name: "v4.0-pouyapf-vayu"
-          name: "Project Infinity-X 4.0 Android 17 (POCO X3 Pro - vayu) by Pouya Fakhari"
-          body: |
-            ## Project Infinity-X 4.0 (Android 17) for POCO X3 Pro (vayu / bhima)
-            
-            ![Maintainer](assets/pouya_maintainer.png)
-            
-            - **Device:** POCO X3 Pro (`vayu` / `bhima`)
-            - **Android Version:** 17 (Baklava / API 37)
-            - **ROM Version:** Project Infinity-X 4.0
-            - **Build Type:** UNOFFICIAL / RELEASE
-            - **Maintainer:** Pouya Fakhari (PouyaPF)
-            - **Telegram:** [@Pouya_Fakhari](https://t.me/Pouya_Fakhari)
-            
-            ### Features
-            - Full Android 17 core system & framework
-            - Dynamic Island, new lockscreen customization & blur surfaces
-            - Clean Vanilla build (flash BiTGApps if needed)
-            - Tested on Qualcomm Snapdragon 860 hardware
-          draft: false
-          prerelease: false
-          files: |
-            Project_Infinity-X-4.0-vayu-VANILLA-UNOFFICIAL.zip
-            sha256.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat << 'EOF' > release_notes.md
+          ## Project Infinity-X 4.0 (Android 17) for POCO X3 Pro (vayu / bhima)
+          
+          ![Maintainer](https://raw.githubusercontent.com/PouyaFakhari/infinityx_vayu_builder/main/assets/pouya_maintainer.png)
+          
+          - **Device:** POCO X3 Pro (`vayu` / `bhima`)
+          - **Android Version:** 17 (Baklava / API 37)
+          - **ROM Version:** Project Infinity-X 4.0
+          - **Build Type:** UNOFFICIAL / RELEASE
+          - **Maintainer:** Pouya Fakhari (PouyaPF)
+          - **Telegram:** [@Pouya_Fakhari](https://t.me/Pouya_Fakhari)
+          
+          ### Features
+          - Full Android 17 core system & framework
+          - Dynamic Island, new lockscreen customization & blur surfaces
+          - Clean Vanilla build (flash BiTGApps if needed)
+          - Built on Qualcomm Snapdragon 860 Vayu hardware drivers
+          EOF
+
+          # Delete existing release tag if it was created
+          gh release delete "v4.0-pouyapf-vayu" -y || true
+          git push --delete origin "v4.0-pouyapf-vayu" || true
+
+          # Create release using gh CLI (supports large files up to 100GB)
+          gh release create "v4.0-pouyapf-vayu" \
+            Project_Infinity-X-4.0-vayu-VANILLA-UNOFFICIAL.zip sha256.txt \
+            --title "Project Infinity-X 4.0 Android 17 (POCO X3 Pro - vayu) by Pouya Fakhari" \
+            --notes-file release_notes.md
