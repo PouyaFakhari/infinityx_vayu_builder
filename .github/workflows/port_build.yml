@@ -3,6 +3,9 @@ name: Build Infinity-X 4.0 Port for Vayu
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   port:
     name: Port Project Infinity-X 4.0 (Android 17) for POCO X3 Pro
