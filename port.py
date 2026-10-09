@@ -102,6 +102,7 @@ def main():
     # 1. Copy Vayu Hardware Partitions & Kernels
     vayu_hw_files = [
         "boot.img", "dtbo.img", "vbmeta.img", "vbmeta_system.img",
+        "unsparse_super_empty.img",
         "vendor.new.dat.br", "vendor.transfer.list", "vendor.patch.dat",
         "odm.new.dat.br", "odm.transfer.list", "odm.patch.dat"
     ]
